@@ -3,7 +3,7 @@ name: "C++ CI/CD"
 on:
   push:
     branches:
-      - lab5
+      - main
 
 jobs:
   build_linux:
