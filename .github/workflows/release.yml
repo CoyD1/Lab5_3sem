@@ -6,97 +6,97 @@ on:
       - main
 
 jobs:
-  bump_version:
+  build_linux:
     runs-on: ubuntu-latest
-    outputs:
-      new_tag: ${{ steps.bump.outputs.new_tag }}
-      major: ${{ steps.bump.outputs.major }}
-      minor: ${{ steps.bump.outputs.minor }}
-      patch: ${{ steps.bump.outputs.patch }}
+    permissions: write-all
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: true
 
-      - name: Bump version
-        id: bump
-        run: |
-          git fetch --tags --quiet
-          last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "1.0.0")
-          last_tag=${last_tag#v}
-          IFS='.' read -r major minor patch <<< "$last_tag"
-          while true; do
-            patch=$((patch+1))
-            new_tag="$major.$minor.$patch"
-            if git rev-parse -q --verify "refs/tags/$new_tag" >/dev/null 2>&1; then
-              continue
-            fi
-            git tag "$new_tag"
-            git push origin "refs/tags/$new_tag"
-            echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
-            echo "major=$major" >> "$GITHUB_OUTPUT"
-            echo "minor=$minor" >> "$GITHUB_OUTPUT"
-            echo "patch=$patch" >> "$GITHUB_OUTPUT"
-            break
-          done
-
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    needs: bump_version
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: true
-
-      - name: Install dependencies on Linux
-        if: runner.os == 'Linux'
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libsfml-dev zip git
-
-      - name: Install dependencies on Windows
-        if: runner.os == 'Windows'
-        run: |
-          choco install mingw
-          choco install cmake
-          choco install git
 
       - name: Configure & Build
         run: |
           cmake -S . -B build -DPATCH_VERSION=${{ github.run_number }}
           cmake --build build --config Release
 
-      - name: Archive Build
+      - name: Archive Linux build
         run: |
           cd build
-          zip -r ../${{ runner.os }}-build.zip *
+          zip -r ../linux-build.zip *
 
-      - name: Upload Artifact
+      - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ runner.os }}-build
-          path: ${{ runner.os }}-build.zip
+          name: linux-zip
+          path: linux-build.zip
+
+  build_windows:
+    runs-on: windows-latest
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >
+            base-devel
+            mingw-w64-x86_64-make
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-toolchain
+            zip
+            git
+
+      - name: Configure and Build
+        shell: msys2 {0}
+        run: |
+          mkdir -p build
+          cd build
+          cmake -G "MinGW Makefiles" .. -DPATCH_VERSION=${{ github.run_number }}
+          cmake --build .
+        env:
+          MSYSTEM: MINGW64
+
+      - name: Zip Windows build
+        shell: msys2 {0}
+        env:
+          MSYSTEM: MINGW64
+        run: |
+          cd build
+          zip -r ../windows-build.zip *
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: windows-build.zip
 
   release:
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [build_linux, build_windows]
+    permissions: write-all
     steps:
       - name: Download Linux artifact
         uses: actions/download-artifact@v4
         with:
-          name: linux-build
+          name: linux-zip
           path: ./release_files
 
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: windows-build
+          name: windows-zip
           path: ./release_files
 
-      - name: Create GitHub Release & Upload Assets
+      - name: Create GitHub Release & upload assets
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v1.0.${{ github.run_number }}
