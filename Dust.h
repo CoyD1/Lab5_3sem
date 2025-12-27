@@ -1,21 +1,21 @@
 #pragma once
-#define _USE_MATH_DEFINES
+
+#include "Color.h"
 #include "Painter.h"
 #include "Point.h"
-#include "Velocity.h"
-#include <cmath>
 
 class Dust {
+  private:
+    Point dustVelo;
+    Point dustCenter;
+    double dustRad;
+    Color dustColor;
+    double lifeTime;
+
   public:
-    Point center_;
-    Velocity velocity_;
-    double lifetime_ = 1.5;
-    double radius_ = 5;
-    Color color_ = Color(0, 0, 0);
-    Dust(const Point& center, const Velocity& velocity);
-    void setVelocity(const Velocity& velocity);
-    Velocity getVelocity() const;
+    Dust(Point center, Point velocity, double radius, Color color,
+         double lifetime);
+    void update(double tick);
+    bool isDead() const;
     void draw(Painter& painter) const;
-    void setCenter(const Point& center);
-    Point getCenter() const;
 };

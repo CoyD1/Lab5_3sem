@@ -1,6 +1,7 @@
 #include "World.h"
 #include "Painter.h"
 #include <fstream>
+#include <iostream>
 
 // Длительность одного тика симуляции.
 // Подробнее см. update()
@@ -14,19 +15,36 @@ static constexpr double timePerTick = 0.001;
 World::World(const std::string& worldFilePath) {
 
     std::ifstream stream(worldFilePath);
-
-    stream >> topLeft.x >> topLeft.y >> bottomRight.x >> bottomRight.y;
+    /**
+     * TODO: хорошее место для улучшения.
+     * Чтение границ мира из модели
+     * Обратите внимание, что здесь и далее мы многократно
+     * читаем в объект типа Point, последовательно
+     * заполняя координаты x и у. Если что-то делаем
+     * многократно - хорошо бы вынести это в функцию
+     * и не дублировать код...
+     */
+    stream >> topLeft >> bottomRight;
     physics.setWorldBox(topLeft, bottomRight);
 
-    Point pos;
-    Velocity vel;
+    /**
+     * TODO: хорошее место для улучшения.
+     * (x, y) и (vx, vy) - составные части объекта, также
+     * как и (red, green, blue). Опять же, можно упростить
+     * этот код, научившись читать сразу Point, Color...
+     */
+    Point center;
     Color color;
+    Velocity velocity;
     double radius;
     bool isCollidable;
 
-    while (stream >> pos >> vel >> color >> radius >> std::boolalpha >>
+    // Здесь не хватает обработки ошибок, но на текущем
+    // уровне прохождения курса нас это устраивает
+    while (stream >> center >> velocity >> color >> radius >> std::boolalpha >>
            isCollidable) {
-        balls.emplace_back(pos, radius, vel, color, isCollidable);
+        Ball ball = Ball(center, velocity, radius, color, isCollidable);
+        balls.push_back(ball);
     }
 }
 
@@ -39,6 +57,10 @@ void World::show(Painter& painter) const {
     // Вызываем отрисовку каждого шара
     for (const Ball& ball : balls) {
         ball.draw(painter);
+    }
+
+    for (const Dust& dust : dusts) {
+        dust.draw(painter);
     }
 }
 
@@ -64,17 +86,5 @@ void World::update(double time) {
     const auto ticks = static_cast<size_t>(std::floor(time / timePerTick));
     restTime = time - double(ticks) * timePerTick;
 
-    physics.update(balls, ticks);
-    for (size_t i = 0; i < ticks; ++i) {
-        std::vector<Dust> alive{};
-        for (Dust& dust : physics.dusts) {
-            dust.lifetime_ -= timePerTick;
-            if (dust.lifetime_ > 0) {
-                dust.setCenter(dust.getCenter() +
-                               dust.getVelocity().vector() * timePerTick);
-                alive.push_back(dust);
-            }
-        }
-        physics.dusts = alive;
-    }
+    physics.update(balls, ticks, dusts);
 }

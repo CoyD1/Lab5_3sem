@@ -1,13 +1,16 @@
 #include "Ball.hpp"
+#include "Color.h"
+#include "Point.h"
+#include "Velocity.h"
 #include <cmath>
 
-Ball::Ball(Point& center, double radius, Velocity& velocity, Color& color,
-           bool isCollidable)
-    : center_{center}, radius_{radius}, velocity_{velocity}, color_{color},
-      isCollidable_{isCollidable} {}
-
-bool Ball::isCollidable() {
-    return isCollidable_;
+Ball::Ball(Point center, Velocity velocity, double radius, Color color,
+           bool collision) {
+    ballCenter = center;
+    ballVelo = velocity;
+    ballRad = radius;
+    ballColor = color;
+    isCollidable = collision;
 }
 
 /**
@@ -15,16 +18,14 @@ bool Ball::isCollidable() {
  * @param velocity новое значение скорости
  */
 void Ball::setVelocity(const Velocity& velocity) {
-    // TODO: место для доработки
-    velocity_ = velocity;
+    ballVelo = velocity;
 }
 
 /**
  * @return скорость объекта
  */
 Velocity Ball::getVelocity() const {
-    // TODO: место для доработки
-    return velocity_;
+    return ballVelo;
 }
 
 /**
@@ -36,8 +37,7 @@ Velocity Ball::getVelocity() const {
  * @param painter контекст отрисовки
  */
 void Ball::draw(Painter& painter) const {
-    // TODO: место для доработки
-    painter.draw(center_, radius_, color_);
+    painter.draw(ballCenter, ballRad, ballColor);
 }
 
 /**
@@ -45,8 +45,7 @@ void Ball::draw(Painter& painter) const {
  * @param center новый центр объекта
  */
 void Ball::setCenter(const Point& center) {
-    // TODO: место для доработки
-    center_ = center;
+    ballCenter = center;
 }
 
 /**
@@ -54,7 +53,7 @@ void Ball::setCenter(const Point& center) {
  */
 Point Ball::getCenter() const {
     // TODO: место для доработки
-    return center_;
+    return ballCenter;
 }
 
 /**
@@ -63,8 +62,7 @@ Point Ball::getCenter() const {
  * не требуется
  */
 double Ball::getRadius() const {
-    // TODO: место для доработки
-    return radius_;
+    return ballRad;
 }
 
 /**
@@ -75,6 +73,9 @@ double Ball::getRadius() const {
  * эквивалентна объему: PI * radius^3 * 4. / 3.
  */
 double Ball::getMass() const {
-    // TODO: место для доработки
-    return M_PI * radius_ * radius_ * radius_ * 4. / 3.;
+    return M_PI * pow(ballRad, 3) * 4.0 / 3.0;
+}
+
+bool Ball::getCollision() const {
+    return isCollidable;
 }

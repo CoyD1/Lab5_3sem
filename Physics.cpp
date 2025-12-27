@@ -1,4 +1,5 @@
 #include "Physics.h"
+#include <algorithm>
 
 double dot(const Point& lhs, const Point& rhs) {
     return lhs.x * rhs.x + lhs.y * rhs.y;
@@ -11,26 +12,22 @@ void Physics::setWorldBox(const Point& topLeft, const Point& bottomRight) {
     this->bottomRight = bottomRight;
 }
 
-void Physics::create_dust(Point& p) {
-    for (int i = 0; i < 5; i++) {
-        Velocity vel(200, 2 * M_PI * i / 5);
-        dusts.emplace_back(p, vel);
-    }
-}
-
-void Physics::update(std::vector<Ball>& balls, const size_t ticks) {
+void Physics::update(std::vector<Ball>& balls, const size_t ticks,
+                     std::vector<Dust>& dusts) const {
 
     for (size_t i = 0; i < ticks; ++i) {
         move(balls);
+        moveParticles(dusts);
         collideWithBox(balls);
-        collideBalls(balls);
+        collideBalls(balls, dusts);
     }
 }
 
-void Physics::collideBalls(std::vector<Ball>& balls) {
+void Physics::collideBalls(std::vector<Ball>& balls,
+                           std::vector<Dust>& dusts) const {
     for (auto a = balls.begin(); a != balls.end(); ++a) {
         for (auto b = std::next(a); b != balls.end(); ++b) {
-            if (!a->isCollidable() or !b->isCollidable()) {
+            if (!a->getCollision() || !b->getCollision()) {
                 continue;
             }
             const double distanceBetweenCenters2 =
@@ -40,17 +37,15 @@ void Physics::collideBalls(std::vector<Ball>& balls) {
                 collisionDistance * collisionDistance;
 
             if (distanceBetweenCenters2 < collisionDistance2) {
-                processCollision(*a, *b, distanceBetweenCenters2);
-                Point collision_point = (a->getCenter() + b->getCenter()) / 2.;
-                create_dust(collision_point);
+                processCollision(*a, *b, distanceBetweenCenters2, dusts);
             }
         }
     }
 }
 
-void Physics::collideWithBox(std::vector<Ball>& balls) {
+void Physics::collideWithBox(std::vector<Ball>& balls) const {
     for (Ball& ball : balls) {
-        if (!ball.isCollidable()) {
+        if (!ball.getCollision()) {
             continue;
         }
         const Point p = ball.getCenter();
@@ -64,14 +59,10 @@ void Physics::collideWithBox(std::vector<Ball>& balls) {
             Point vector = ball.getVelocity().vector();
             vector.x = -vector.x;
             ball.setVelocity(vector);
-            Point collision_point = ball.getCenter();
-            create_dust(collision_point);
         } else if (isOutOfRange(p.y, topLeft.y + r, bottomRight.y - r)) {
             Point vector = ball.getVelocity().vector();
             vector.y = -vector.y;
             ball.setVelocity(vector);
-            Point collision_point = ball.getCenter();
-            create_dust(collision_point);
         }
     }
 }
@@ -84,8 +75,8 @@ void Physics::move(std::vector<Ball>& balls) const {
     }
 }
 
-void Physics::processCollision(Ball& a, Ball& b,
-                               double distanceBetweenCenters2) const {
+void Physics::processCollision(Ball& a, Ball& b, double distanceBetweenCenters2,
+                               std::vector<Dust>& dusts) const {
     // нормированный вектор столкновения
     const Point normal =
         (b.getCenter() - a.getCenter()) / std::sqrt(distanceBetweenCenters2);
@@ -101,4 +92,29 @@ void Physics::processCollision(Ball& a, Ball& b,
     // задаем новые скорости мячей после столкновения
     a.setVelocity(Velocity(aV - normal * p * a.getMass()));
     b.setVelocity(Velocity(bV + normal * p * b.getMass()));
+
+    Point collisionPoint = Point{(a.getCenter().x + b.getCenter().x) / 2.0,
+                                 (a.getCenter().y + b.getCenter().y) / 2.0};
+    Color col = Color(0, 0, 0);
+
+    int particles = 10;
+    double speed = 150;
+    double lifeTime = 1;
+    double rad = 5.0;
+
+    for (int i = 0; i < particles; ++i) {
+        double ang = 2.0 * M_PI * static_cast<double>(i) / particles;
+        Point vel = Point{std::cos(ang), std::sin(ang)} * speed;
+        Dust particle = Dust(collisionPoint, vel, rad, col, lifeTime);
+        dusts.push_back(particle);
+    }
+}
+
+void Physics::moveParticles(std::vector<Dust>& dusts) const {
+    for (Dust& dust : dusts) {
+        dust.update(timePerTick);
+    }
+    dusts.erase(std::remove_if(dusts.begin(), dusts.end(),
+                               [](const Dust& d) { return d.isDead(); }),
+                dusts.end());
 }

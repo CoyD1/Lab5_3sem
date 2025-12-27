@@ -1,19 +1,23 @@
 #include "Dust.h"
 
-Dust::Dust(const Point& center, const Velocity& velocity)
-    : center_{center}, velocity_{velocity} {}
-void Dust::setVelocity(const Velocity& velocity) {
-    velocity_ = velocity;
+Dust::Dust(Point center, Point velocity, double radius, Color color,
+           double lifetime) {
+    dustVelo = velocity;
+    dustCenter = center;
+    dustRad = radius;
+    dustColor = color;
+    lifeTime = lifetime;
 }
-Velocity Dust::getVelocity() const {
-    return velocity_;
+
+void Dust::update(double tick) {
+    dustCenter = dustCenter + dustVelo * tick;
+    lifeTime -= tick;
 }
+
+bool Dust::isDead() const {
+    return lifeTime <= 0.0;
+}
+
 void Dust::draw(Painter& painter) const {
-    painter.draw(center_, radius_, color_);
-}
-void Dust::setCenter(const Point& center) {
-    center_ = center;
-}
-Point Dust::getCenter() const {
-    return center_;
+    painter.draw(dustCenter, dustRad, dustColor);
 }

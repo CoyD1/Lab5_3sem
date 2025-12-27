@@ -1,23 +1,19 @@
 #pragma once
-#define _USE_MATH_DEFINES
 #include "Painter.h"
 #include "Point.h"
 #include "Velocity.h"
-#include <cmath>
 
 class Ball {
   private:
-    Point center_;
-    Velocity velocity_;
-    double radius_;
-    Color color_;
-    bool isCollidable_;
+    Velocity ballVelo;
+    Point ballCenter;
+    double ballRad;
+    Color ballColor;
+    bool isCollidable;
 
   public:
-    Ball(Point& center, double radius, Velocity& velocity, Color& color,
-         bool isCollidable);
-    bool isCollidable();
-
+    Ball(Point center, Velocity velocity, double radius, Color color,
+         bool collision);
     void setVelocity(const Velocity& velocity);
     Velocity getVelocity() const;
     void draw(Painter& painter) const;
@@ -25,4 +21,5 @@ class Ball {
     Point getCenter() const;
     double getRadius() const;
     double getMass() const;
+    bool getCollision() const;
 };
